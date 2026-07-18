@@ -116,10 +116,11 @@ class _CameraScreenState extends State<CameraScreen> {
       // NOTE: Change this IP to your machine's local network IP
       var uri = Uri.parse('https://ai-digital-twin-bojs.onrender.com/upload/'); 
       
+      final bytes = await image.readAsBytes();
       var request = http.MultipartRequest('POST', uri)
         ..fields['latitude'] = position.latitude.toString()
         ..fields['longitude'] = position.longitude.toString()
-        ..files.add(await http.MultipartFile.fromPath('file', image.path));
+        ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: image.name));
 
       var response = await request.send();
 
