@@ -114,7 +114,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
       // 3. Upload to FastAPI Backend
       // NOTE: Change this IP to your machine's local network IP
-      var uri = Uri.parse('http://192.168.1.100:8000/upload/'); 
+      var uri = Uri.parse('https://ai-digital-twin-bojs.onrender.com/upload/'); 
       
       var request = http.MultipartRequest('POST', uri)
         ..fields['latitude'] = position.latitude.toString()

@@ -27,7 +27,7 @@ const DigitalTwinDashboard = () => {
 
   const fetchInitialData = async () => {
     try {
-      const response = await fetch('http://localhost:8000/inspections/');
+      const response = await fetch('https://ai-digital-twin-bojs.onrender.com/inspections/');
       if (response.ok) {
         const data = await response.json();
         setInspections(data.reverse()); // Newest first
@@ -38,7 +38,7 @@ const DigitalTwinDashboard = () => {
   };
 
   const connectWebSocket = () => {
-    wsRef.current = new WebSocket('ws://localhost:8000/ws');
+    wsRef.current = new WebSocket('wss://ai-digital-twin-bojs.onrender.com/ws');
     
     wsRef.current.onmessage = (event) => {
       const newDefect = JSON.parse(event.data);
@@ -70,7 +70,7 @@ const DigitalTwinDashboard = () => {
   const simulateUpload = async () => {
     setIsSimulating(true);
     try {
-      const mockResponse = await fetch('http://localhost:8000/mock_upload/', { method: 'POST' });
+      const mockResponse = await fetch('https://ai-digital-twin-bojs.onrender.com/mock_upload/', { method: 'POST' });
       const mockData = await mockResponse.json();
       
       const formData = new FormData();
@@ -81,7 +81,7 @@ const DigitalTwinDashboard = () => {
       formData.append('file', dummyBlob, mockData.filename);
 
       // We don't need to manually update state here, the WebSocket will catch the broadcast!
-      await fetch('http://localhost:8000/upload/', {
+      await fetch('https://ai-digital-twin-bojs.onrender.com/upload/', {
         method: 'POST',
         body: formData,
       });
@@ -246,7 +246,7 @@ const DigitalTwinDashboard = () => {
                   </div>
                   <div className="card-body">
                     <img 
-                      src={insp.image_url.startsWith('http') ? insp.image_url : `http://localhost:8000${insp.image_url}`} 
+                      src={insp.image_url.startsWith('http') ? insp.image_url : `https://ai-digital-twin-bojs.onrender.com${insp.image_url}`} 
                       alt="Defect" 
                       onError={(e) => { e.target.src = 'https://via.placeholder.com/300x200?text=AI+Processed+Image' }}
                     />
