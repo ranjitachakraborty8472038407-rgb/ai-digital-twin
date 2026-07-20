@@ -5,8 +5,9 @@ import {
   Activity, Brain, Cloud, Database, 
   Map, Navigation, Radio, Satellite, 
   ShieldAlert, Smartphone, Zap, 
-  Settings, Layers, List, Camera
+  Settings, Layers, List, Camera, ActivitySquare
 } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const DigitalTwinDashboard = () => {
   const [inspections, setInspections] = useState([]);
@@ -14,6 +15,7 @@ const DigitalTwinDashboard = () => {
   const [activeTab, setActiveTab] = useState('telemetry');
   const [aiConfidence, setAiConfidence] = useState(85);
   const [flyTo, setFlyTo] = useState(null);
+  const [iotData, setIotData] = useState([]);
   const wsRef = useRef(null);
 
   // Initial Fetch & WebSocket Setup
@@ -21,8 +23,23 @@ const DigitalTwinDashboard = () => {
     fetchInitialData();
     connectWebSocket();
 
+    // IoT Simulator loop
+    const interval = setInterval(() => {
+      const now = new Date();
+      setIotData(prev => {
+        const newData = [...prev, {
+          time: now.toLocaleTimeString([], { hour12: false }),
+          stress: 45 + Math.sin(now.getTime() / 1000) * 15 + Math.random() * 5, // Simulated bridge stress in MPa
+          vibration: 2 + Math.random() * 3 // Simulated vibration in Hz
+        }];
+        if (newData.length > 20) newData.shift();
+        return newData;
+      });
+    }, 1000);
+
     return () => {
       if (wsRef.current) wsRef.current.close();
+      clearInterval(interval);
     };
   }, []);
 
@@ -229,6 +246,12 @@ const DigitalTwinDashboard = () => {
           >
             <List className="icon-small" /> History
           </button>
+          <button 
+            className={activeTab === 'iot' ? 'active' : ''} 
+            onClick={() => setActiveTab('iot')}
+          >
+            <ActivitySquare className="icon-small" /> IoT Sensors
+          </button>
         </div>
 
         <div className="sidebar-content">
@@ -247,6 +270,34 @@ const DigitalTwinDashboard = () => {
                   </span>
                 </div>
               ))}
+            </div>
+          ) : activeTab === 'iot' ? (
+            <div className="iot-dashboard" style={{ padding: '10px' }}>
+              <h3 style={{ color: '#06b6d4', marginBottom: '10px' }}>Bridge Structural Stress (MPa)</h3>
+              <div style={{ height: '200px', width: '100%', marginBottom: '20px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={iotData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="time" stroke="#94a3b8" tick={{fontSize: 10}} />
+                    <YAxis stroke="#94a3b8" domain={[20, 70]} tick={{fontSize: 10}} />
+                    <Tooltip contentStyle={{backgroundColor: '#1e293b', border: 'none'}} />
+                    <Line type="monotone" dataKey="stress" stroke="#ef4444" strokeWidth={2} dot={false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              <h3 style={{ color: '#06b6d4', marginBottom: '10px' }}>Live Vibration (Hz)</h3>
+              <div style={{ height: '200px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={iotData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="time" stroke="#94a3b8" tick={{fontSize: 10}} />
+                    <YAxis stroke="#94a3b8" domain={[0, 10]} tick={{fontSize: 10}} />
+                    <Tooltip contentStyle={{backgroundColor: '#1e293b', border: 'none'}} />
+                    <Line type="monotone" dataKey="vibration" stroke="#f59e0b" strokeWidth={2} dot={false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           ) : (
             <div className="inspection-list">
