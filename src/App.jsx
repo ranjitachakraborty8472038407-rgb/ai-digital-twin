@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Globe from 'react-globe.gl';
+import { Viewer, Entity, PointGraphics, EntityDescription, CameraFlyTo } from 'resium';
+import { Cartesian3, Color, Ion } from 'cesium';
 import { 
   Activity, Brain, Cloud, Database, 
   Map, Navigation, Radio, Satellite, 
@@ -12,7 +13,7 @@ const DigitalTwinDashboard = () => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [activeTab, setActiveTab] = useState('telemetry');
   const [aiConfidence, setAiConfidence] = useState(85);
-  const globeRef = useRef();
+  const [flyTo, setFlyTo] = useState(null);
   const wsRef = useRef(null);
 
   // Initial Fetch & WebSocket Setup
@@ -51,13 +52,12 @@ const DigitalTwinDashboard = () => {
         return updated;
       });
 
-      // Animate Globe to the live event if it's high severity
-      if (newDefect.severity > 70 && globeRef.current) {
-        globeRef.current.pointOfView({ 
-          lat: newDefect.latitude, 
-          lng: newDefect.longitude, 
-          altitude: 1.5 
-        }, 1500);
+      // Animate to the live event if it's high severity
+      if (newDefect.severity > 70) {
+        setFlyTo({
+          destination: Cartesian3.fromDegrees(newDefect.longitude, newDefect.latitude, 1000),
+          duration: 2.0
+        });
       }
     };
 
@@ -93,38 +93,52 @@ const DigitalTwinDashboard = () => {
     }
   };
 
-  const globeData = inspections.map(insp => ({
-    lat: insp.latitude,
-    lng: insp.longitude,
-    weight: insp.severity / 100,
-    color: insp.severity > 70 ? '#ef4444' : insp.severity > 40 ? '#f59e0b' : '#10b981',
-    label: `${insp.defect_type} (Sev: ${insp.severity.toFixed(0)})`
-  }));
+  const getCesiumColor = (severity) => {
+    if (severity > 70) return Color.RED;
+    if (severity > 40) return Color.ORANGE;
+    return Color.GREEN;
+  };
 
   return (
     <div className="dashboard-container">
-      {/* FULLSCREEN BACKGROUND GLOBE */}
-      <div className="globe-background">
-        <Globe
-          ref={globeRef}
-          globeImageUrl="//unpkg.com/three-globe/example/img/earth-dark.jpg"
-          bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-          backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-          pointsData={globeData}
-          pointAltitude="weight"
-          pointColor="color"
-          pointRadius={0.5}
-          pointsMerge={true}
-          labelsData={globeData}
-          labelDotRadius={0.5}
-          labelColor={() => 'rgba(255, 255, 255, 0.75)'}
-          labelText="label"
-          labelSize={1.5}
-          labelResolution={2}
-          labelAltitude={d => d.weight + 0.05}
-          atmosphereColor="#06b6d4"
-          atmosphereAltitude={0.15}
-        />
+      {/* FULLSCREEN BACKGROUND GLOBE (CESIUM) */}
+      <div className="globe-background" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+        <Viewer full animation={false} timeline={false} infoBox={true}>
+          {flyTo && (
+            <CameraFlyTo 
+              destination={flyTo.destination} 
+              duration={flyTo.duration}
+              onComplete={() => setFlyTo(null)}
+            />
+          )}
+          {inspections.map(insp => (
+            <Entity
+              key={insp.id || Math.random()}
+              position={Cartesian3.fromDegrees(insp.longitude, insp.latitude, 0)}
+              name={insp.defect_type}
+            >
+              <PointGraphics pixelSize={15} color={getCesiumColor(insp.severity)} outlineColor={Color.WHITE} outlineWidth={2} />
+              <EntityDescription>
+                <div style={{color: 'white', backgroundColor: '#1e293b', padding: '10px', borderRadius: '5px'}}>
+                  <h1 style={{fontSize: '18px', margin: '0 0 10px 0', borderBottom: '1px solid #334155', paddingBottom: '5px'}}>
+                    {insp.defect_type}
+                  </h1>
+                  <p style={{margin: '5px 0'}}><strong>Severity:</strong> {insp.severity.toFixed(1)}%</p>
+                  <p style={{margin: '5px 0'}}><strong>Lat:</strong> {insp.latitude.toFixed(4)}</p>
+                  <p style={{margin: '5px 0'}}><strong>Lng:</strong> {insp.longitude.toFixed(4)}</p>
+                  {insp.image_url && (
+                    <img 
+                      src={insp.image_url.startsWith('http') ? insp.image_url : `https://ai-digital-twin-bojs.onrender.com${insp.image_url}`} 
+                      alt="Defect"
+                      style={{width: '100%', marginTop: '10px', borderRadius: '4px'}}
+                      onError={(e) => { e.target.style.display = 'none' }}
+                    />
+                  )}
+                </div>
+              </EntityDescription>
+            </Entity>
+          ))}
+        </Viewer>
       </div>
 
       {/* TOP NAVIGATION BAR */}
